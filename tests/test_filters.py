@@ -124,3 +124,22 @@ def test_injected_chirp_survives_reduction(rate):
     e16 = np.sum(ht ** 2) / fs
     elo = np.sum(y[fin] ** 2) / rate
     assert abs(elo / e16 - 1) < 1e-3
+
+
+def test_edge_accuracy_against_known_truth():
+    """Quantify accuracy at a real boundary, per edge level, against truth."""
+    fs, f0, amp = FS_IN, 137.0, 1e-18
+    t = np.arange(300 * fs) / fs
+    x = amp * np.sin(2 * np.pi * f0 * t)
+    x[:50 * fs] = np.nan                     # a true science boundary at 50 s
+    y, edge, _, _ = reduce_strain(x, 2048, extend_s=0.25)
+    ref = amp * np.sin(2 * np.pi * f0 * np.arange(len(y)) / 2048)
+    fin = np.isfinite(y)
+    err = {lvl: (np.abs(y[m] - ref[m]).max() / amp if (m := fin & (edge == lvl)).any()
+                 else None) for lvl in (0, 1, 2)}
+    assert err[0] < 1e-8          # clean: essentially exact
+    assert err[1] < 1e-3          # mirror-padded: still good
+    assert err[2] is not None     # extrapolated: emitted and flagged
+    # and no science time is thrown away
+    covered = np.isfinite(x).reshape(-1, 8).any(axis=1)
+    assert fin[covered].all()

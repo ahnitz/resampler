@@ -28,6 +28,33 @@ rolloff lies above the band you keep — about **1% of frequency-dependent
 amplitude error** (−39 dB) is inherited across 10–700 Hz. Starting from the
 16 kHz files avoids all of it.
 
+## Does it matter in practice?
+
+`validation/injection_recovery.py` injects an inspiral into real O4a strain
+and matched-filters the result through three pipelines: the 16 kHz data
+(truth), this package, and GWOSC's own 4096 Hz product.
+
+| band | data_sampler | GWOSC 4096 Hz |
+|---|---|---|
+| 20–922 Hz | −0.00 % | −0.12 % |
+| 1400–1843 Hz | −0.18 % | **−28.2 %** |
+| 1600–1843 Hz | **−0.00 %** | **−25.9 %** |
+
+Two honest qualifications:
+
+* **Below ~1 kHz their product is fine for matched filtering.** Matched-filter
+  SNR is invariant to an overall gain -- the data and its estimated PSD scale
+  together -- so GWOSC's flat 1.14% deficit cancels, and only their ripple
+  costs anything, about 0.1%. Their 1% error matters for calibration-sensitive
+  work, not for SNR.
+* **Their boundary handling has no pathology.** `validation/boundary_test.py`
+  shows they lose no science time, and their deviation is flat with distance
+  from a science edge (7e-3 at 0–0.05 s, 1.2e-2 at 20–60 s) rather than
+  growing towards it.
+
+The real cost of their filter is **bandwidth**: a quarter of the SNR is gone
+above 1600 Hz, which is where post-merger and neutron-star physics lives.
+
 ## Install
 
 ```bash

@@ -75,6 +75,8 @@ def matched_filter(d, fs, mc, flow, fhigh, psd_seg=16.0, edge_s=8.0):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("file16")
+    ap.add_argument("--file4", help="matching GWOSC *_4KHZ_* file; adds a third\n"
+                    "pipeline measuring GWOSC's own product against the same truth")
     ap.add_argument("--rate", type=int, default=2048)
     ap.add_argument("--dur", type=float, default=256.0)
     ap.add_argument("--mc", type=float, default=1.2, help="chirp mass (Msun)")
@@ -124,9 +126,39 @@ def main():
     cB, _, _, _ = matched_filter(yn[mn], a.rate, a.mc, a.flow, fhigh)
     print(f"noise-only control: loudest SNR  16 kHz {cA:.2f}   "
           f"{a.rate} Hz {cB:.2f}   (expect ~5)\n")
+    rows = [("A  16384 Hz (truth)", sA, tA, pA)]
+    rows.append((f"B  data_sampler -> {a.rate} Hz", sB, tB, pB))
+
+    # ---- pipeline C: GWOSC's own 4096 Hz product ----
+    # The reduction is linear, so GWOSC_4k(noise+signal) = their real 4 kHz
+    # file (their filtering of this very noise) plus their filter applied to
+    # the injection.  Their |H(f)| is measured from the 16k/4k pair.
+    if a.file4:
+        with h5py.File(a.file4, "r") as f4:
+            x4 = f4["strain/Strain"][:]
+        R = 4
+        n4 = n // R
+        noise4 = x4[s[i] // R: s[i] // R + n4].astype(float)
+        if np.isfinite(noise4).all():
+            fs4 = fs // R
+            # measure their amplitude response on this same stretch
+            pf16, pp16 = welch_psd(noise, fs, 16.0)
+            pf4, pp4 = welch_psd(noise4, fs4, 16.0)
+            Hm = np.sqrt(pp4 / np.interp(pf4, pf16, pp16))
+            Hf = np.interp(f16, pf4, Hm, left=Hm[0], right=0.0)
+            sig4 = np.fft.irfft(np.fft.rfft(ht) * Hf, n=n)[::R]
+            dC = noise4 + sig4
+            sC, tC, pC, _ = matched_filter(dC, fs4, a.mc, a.flow, fhigh)
+            rows.append(("C  GWOSC official 4096 Hz", sC, tC, pC))
+        else:
+            print("  (4 kHz span not all finite; skipping pipeline C)")
+
     print(f"{'pipeline':34} {'SNR':>8} {'t_peak s':>10} {'phase':>8}")
-    print(f"{'A  16384 Hz (truth)':34} {sA:8.4f} {tA:10.5f} {pA:8.4f}")
-    print(f"{'B  reduced to %d Hz' % a.rate:34} {sB:8.4f} {tB:10.5f} {pB:8.4f}")
+    for name, sv, tv, pv in rows:
+        print(f"{name:34} {sv:8.4f} {tv:10.5f} {pv:8.4f}")
+    for name, sv, tv, pv in rows[1:]:
+        print(f"  {name.split()[0]}/A  SNR {sv/sA:.6f} ({100*(sv/sA-1):+.4f} %)"
+              f"   dt {1e6*(tv-tA):+8.1f} us")
     dt = (tB - tA) * 1e6
     print(f"\nSNR ratio B/A      : {sB/sA:.6f}   ({100*(sB/sA-1):+.4f} %)")
     print(f"timing shift       : {dt:+.2f} us  (one sample at {a.rate} Hz = "
