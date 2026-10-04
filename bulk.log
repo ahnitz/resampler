@@ -1,0 +1,13 @@
+[       0s] 18 candidate streams, 6 workers, -> /run/media/ahnitz/Seagate Backup Plus Drive/gwosc2048 at 2048 Hz
+[       1s] O4a V1: no data
+[      15s] O3a H1: 3051 files
+[      21s] O4a L1: 3873 files
+[      22s] O4a H1: 3901 files
+[      26s] O4b H1: 3735 files
+[      28s] O4b L1: 4755 files
+[      28s] O4b V1: 4942 files
+[     140s] FAIL O4a H1 1368264704: RuntimeError: download failed: /gwdata/O4a/O4a_16KHZ_R1/STRAIN_HDF/H1/1367343104/H-H1_GWOSC_O4a_16KHZ_R1-1368264704-4096.hdf5
+104/H-H1_GWOSC_O4a_16KHZ_R1-1368264704-4096.hdf5"
+time="2026-10-04T17:12:22-04:00" level
+[     144s] FAIL O4a L1 1368195072: RuntimeError: download failed: /gwdata/O4a/O4a_16KHZ_R1/STRAIN_HDF/L1/1367343104/L-L1_GWOSC_O4a_16KHZ_R1-1368195072-4096.hdf5
+ily unavailable (8.6s elapsed, 1m59.9s since start); Attempt #2: failed download from os

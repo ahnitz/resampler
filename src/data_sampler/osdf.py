@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 import re
 import subprocess
+import time
 import numpy as np
 
 from .gwosc_io import read_file, FS_IN, FILE_DUR
@@ -68,19 +69,40 @@ def index(run, det, gps_lo, gps_hi):
     return found
 
 
-def fetch(remote, cache):
-    """Download ``remote`` into ``cache``, returning the local path."""
+def fetch(remote, cache, attempts=6, base_delay=5.0):
+    """Download ``remote`` into ``cache``, returning the local path.
+
+    OSDF caches intermittently answer "temporarily unavailable", so transient
+    failures are retried with exponential backoff -- a multi-day bulk run will
+    hit plenty of them.
+    """
     local = os.path.join(cache, os.path.basename(remote))
     if os.path.exists(local) and os.path.getsize(local) > 0:
         return local
     os.makedirs(cache, exist_ok=True)
     tmp = local + ".part"
-    r = subprocess.run(["pelican", "object", "get", f"osdf://{remote}", tmp],
-                       capture_output=True, text=True, timeout=7200)
-    if r.returncode != 0 or not os.path.exists(tmp):
-        raise RuntimeError(f"download failed: {remote}\n{r.stderr[-500:]}")
-    os.replace(tmp, local)
-    return local
+    last = ""
+    for i in range(attempts):
+        if i:
+            time.sleep(min(base_delay * 2 ** (i - 1), 300.0))
+        try:
+            r = subprocess.run(["pelican", "object", "get",
+                                f"osdf://{remote}", tmp],
+                               capture_output=True, text=True, timeout=7200)
+        except subprocess.TimeoutExpired:
+            last = "timeout"
+            continue
+        if r.returncode == 0 and os.path.exists(tmp) and os.path.getsize(tmp) > 0:
+            os.replace(tmp, local)
+            return local
+        last = (r.stderr or r.stdout)[-300:]
+        if os.path.exists(tmp):
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+    raise RuntimeError(f"download failed after {attempts} attempts: "
+                       f"{remote}\n{last}")
 
 
 def scan_local(dirs):
