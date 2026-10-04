@@ -79,3 +79,48 @@ def test_float32_roundtrip_is_negligible():
     x = 1.5e-18 * rng.standard_normal(1 << 20)
     err = x.astype(np.float32).astype(np.float64) - x
     assert err.std() / x.std() < 1e-7
+
+
+def _chirp(f, mc_msun, tc, n_pad=0):
+    MSUN = 4.925491025543576e-6
+    mc = mc_msun * MSUN
+    h = np.zeros(len(f), complex)
+    g = f > 0
+    h[g] = (mc ** (5 / 6) * f[g] ** (-7 / 6) *
+            np.exp(1j * (2 * np.pi * f[g] * tc +
+                         (3 / 128) * (np.pi * mc * f[g]) ** (-5 / 3))))
+    return h
+
+
+@pytest.mark.parametrize("rate", [4096, 2048])
+def test_injected_chirp_survives_reduction(rate):
+    """An inspiral's arrival time and in-band energy must survive reduction."""
+    fs, dur, flow = FS_IN, 64.0, 30.0
+    fhigh = 0.9 * rate / 2
+    n = int(dur * fs)
+    f = np.fft.rfftfreq(n, 1 / fs)
+
+    hf = _chirp(f, 1.5, tc=dur / 2)
+    hf[(f < flow) | (f > fhigh)] = 0        # strictly inside the output band
+    ht = np.fft.irfft(hf, n=n) * fs
+    ht *= 1e-18 / np.abs(ht).max()
+
+    y, edge, _, _ = reduce_strain(ht, rate)
+    m = np.isfinite(y) & (edge == EDGE_CLEAN)
+    assert m.sum() > 0.9 * len(y)
+
+    # arrival time preserved: compare the analytic ENVELOPE, since argmax of
+    # the raw waveform can land on a different cycle peak at each rate
+    env16 = np.abs(signal.hilbert(ht))
+    envlo = np.abs(signal.hilbert(np.where(m, y, 0.0)))
+    t16 = int(np.argmax(env16)) / fs
+    tlo = int(np.argmax(envlo)) / rate
+    assert abs(tlo - t16) < 2e-3
+
+    # energy of a strictly in-band signal is preserved by decimation.
+    # Use every emitted sample: the edge-flagged ones still carry real signal,
+    # so excluding them would under-count the chirp's energy.
+    fin = np.isfinite(y)
+    e16 = np.sum(ht ** 2) / fs
+    elo = np.sum(y[fin] ** 2) / rate
+    assert abs(elo / e16 - 1) < 1e-3
