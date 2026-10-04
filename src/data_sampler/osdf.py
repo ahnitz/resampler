@@ -31,11 +31,31 @@ def _ls(path):
     return [l.strip() for l in r.stdout.splitlines() if l.strip()]
 
 
+def chunks(run, det):
+    """Sorted GPS-named subdirectories for a detector.
+
+    These are *not* reliably aligned to multiples of ``CHUNK`` -- O4 uses
+    exact multiples, O3 does not -- so they are discovered, never computed.
+    """
+    key = ("chunks", run, det)
+    if key not in _LS_CACHE:
+        _LS_CACHE[key] = sorted(
+            int(c) for c in _ls(f"{ROOTS[run]}/{det}") if c.isdigit())
+    return _LS_CACHE[key]
+
+
 def index(run, det, gps_lo, gps_hi):
     """``{gps_start: osdf_path}`` for files overlapping ``[gps_lo, gps_hi)``."""
     root = ROOTS[run]
     found = {}
-    for chunk in range((gps_lo // CHUNK) * CHUNK, gps_hi + CHUNK, CHUNK):
+    all_c = chunks(run, det)
+    # every chunk that could hold an overlapping file: those starting before
+    # gps_hi, plus the one covering gps_lo
+    cand = [c for c in all_c if c < gps_hi]
+    cand = cand[-1:] if not cand else cand
+    cand = [c for c in cand if c >= (max([x for x in all_c if x <= gps_lo],
+                                         default=cand[0]))]
+    for chunk in cand:
         key = (run, det, chunk)
         if key not in _LS_CACHE:
             _LS_CACHE[key] = _ls(f"{root}/{det}/{chunk}")

@@ -10,10 +10,16 @@ anti-alias filter is loosely specified. Measured against the 16 kHz source
 
 | | GWOSC 16k→4k | this package |
 |---|---|---|
-| passband ripple (20–2000 Hz) | 9.9e-1 | **3.1e-8** |
+| response at 5–30 Hz | −0.10 dB (0.9886) | **0.00 dB (1.0000)** |
 | response at 1700 Hz | −2.11 dB | **0.00 dB** |
 | response at 1800 Hz | −14.62 dB | **0.00 dB** |
-| stopband at Nyquist | −47.1 dB | **−117.5 dB** |
+| deviation from unity, 5–2000 Hz | 9.9e-1 | **3.8e-9** |
+| stopband at Nyquist | −45.6 dB | **−117.3 dB** |
+
+Their filter is equiripple at roughly ±0.57% about unity, and that ripple runs
+all the way down to DC — the response is a flat 0.98857 from 5 Hz through
+30 Hz. So the ~1% amplitude error is not confined to the top of the band; it
+is present at the low frequencies where most searches carry their SNR.
 
 Two consequences for the official product: it is only usable to ~1650 Hz
 rather than 2048 Hz, and its ~−44 dB stopband lets out-of-band power fold

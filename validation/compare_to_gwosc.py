@@ -24,6 +24,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("file16", help="a GWOSC *_16KHZ_* strain file")
     ap.add_argument("--file4", help="matching *_4KHZ_* file (downloaded if absent)")
+    ap.add_argument("--fmin", type=float, default=20.0,
+                    help="low edge of the passband statistic")
+    ap.add_argument("--seg", type=float, default=8.0,
+                    help="Welch segment length in seconds (longer = finer low-f)")
+    ap.add_argument("--freqs", type=str, default="",
+                    help="comma-separated frequencies to tabulate")
     a = ap.parse_args()
 
     f4 = a.file4
@@ -53,7 +59,7 @@ def main():
     s16 = x16[lo * R:hi * R].astype(float)
     print(f"comparing {len(s4)/fs4:.0f} s of common science data\n")
 
-    nper = 1 << int(np.floor(np.log2(fs4 * 8)))
+    nper = 1 << int(np.floor(np.log2(fs4 * a.seg)))
     f, p4 = signal.welch(s4, fs4, nperseg=nper)
     f16, p16 = signal.welch(s16, fs16, nperseg=nper * R)
     m = f <= fs4 / 2
@@ -66,14 +72,16 @@ def main():
     ours = np.sqrt(pm[m] / np.interp(f, f16, p16))
 
     print(f"{'freq Hz':>9} {'GWOSC':>10} {'dB':>8} | {'ours':>10} {'dB':>9}")
-    for fq in [10, 50, 100, 300, 500, 1000, 1500, 1600, 1700, 1800, 1900, 2000]:
+    flist = ([float(v) for v in a.freqs.split(",")] if a.freqs else
+             [10, 50, 100, 300, 500, 1000, 1500, 1600, 1700, 1800, 1900, 2000])
+    for fq in flist:
         j = np.argmin(abs(f - fq))
         g_, o_ = gwosc[j], ours[j]
         print(f"{f[j]:9.1f} {g_:10.5f} {20*np.log10(max(g_,1e-99)):8.2f} | "
               f"{o_:10.5f} {20*np.log10(max(o_,1e-99)):9.2f}")
 
-    band = (f > 20) & (f < pb)
-    print(f"\npassband 20-{pb:.0f} Hz, deviation from unity gain:")
+    band = (f > a.fmin) & (f < pb)
+    print(f"\npassband {a.fmin:.0f}-{pb:.0f} Hz, deviation from unity gain:")
     print(f"  GWOSC : {np.abs(gwosc[band]-1).max():.3e}")
     print(f"  ours  : {np.abs(ours[band]-1).max():.3e}")
     stop = f >= fs4 / 2 * 0.999
