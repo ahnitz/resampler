@@ -6,3 +6,5 @@ dist/
 .pytest_cache/
 *.hdf5
 cache/
+bulk.log*
+out/
