@@ -111,8 +111,13 @@ is discarded there. A continuous 137 Hz tone spliced across a file boundary
 reconstructs to 6e-10 of its amplitude with zero samples flagged.
 
 At a **true science edge** no real data exists beyond it, so the input is
-odd-reflected (not zero-padded, which would inject a step discontinuity and
-ring far worse). Nothing is trimmed — the full segment is emitted, plus
+odd-reflected. What actually matters is *not zero-padding*:
+`validation/padding_bench.py` measures each option against a full-context
+reference, and zero-padding is ~40x worse than anything else because it
+asserts an instantaneous step to zero that the filter then rings on. Edge-hold
+(1.05e-3), odd reflection (1.28e-3) and mirror (1.88e-3) are all within a
+factor of two, and all are exact beyond ntaps//2 samples (0.25 s) from the
+edge. Nothing is trimmed — the full segment is emitted, plus
 `--extend` seconds of filter ring-out past the edge — and every sample carries
 a level saying how it was produced:
 
