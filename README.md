@@ -193,6 +193,33 @@ Real savings exist only by going lossy -- truncating the float32 mantissa to
 deliberately not done: space is not the binding constraint, and compression
 has no effect on the download time that actually dominates.
 
+## Bulk production
+
+`scripts/bulk_reduce.py` reduces whole observing runs, downloading each 16 kHz
+file, writing the reduced version and deleting the original, so the 20.6 TB
+source never lands on disk -- peak local footprint is a few GB of scratch.
+
+```bash
+python scripts/bulk_reduce.py \
+    --dest   /path/to/output \
+    --cache  /fast/local/scratch \
+    --rate   2048 \
+    --workers 10
+```
+
+Each `(run, detector)` is an independent sequential stream, so neighbouring
+files stay cached as filter context; streams run in parallel, which is what
+keeps the network busy. `--runs` selects and orders the runs (default is
+`O4a,O4b,O3a,O3b,O2,O1`); `--max-files` limits each stream for a smoke test.
+
+It is **resumable**: valid outputs are skipped, so an interrupted run can be
+restarted with the same command, and a partially-populated destination can be
+handed to a different machine and continued there.
+
+Expect roughly 20.6 TB downloaded and ~1.1-1.3 TB written for the full set.
+The job is network-bound -- about 5 days on a 45 MB/s link -- so the only
+thing that meaningfully speeds it up is a faster connection.
+
 ## Tests
 
 ```bash
