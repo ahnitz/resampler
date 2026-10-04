@@ -2,8 +2,7 @@ import numpy as np
 import pytest
 from scipy import signal
 
-from data_sampler.filters import (FS_IN, EDGE_CLEAN, EDGE_PAD, EDGE_EXTRAP,
-                                  design, reduce_strain)
+from data_sampler.filters import EDGE_CLEAN, EDGE_EXTRAP, EDGE_PAD, FS_IN, design, reduce_strain
 
 RATES = [4096, 2048, 1024]
 

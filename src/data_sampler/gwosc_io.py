@@ -10,8 +10,9 @@ existing readers work unchanged.  Added, and purely additive:
 from __future__ import annotations
 
 import datetime as _dt
-import numpy as np
+
 import h5py
+import numpy as np
 
 FS_IN = 16384
 FILE_DUR = 4096

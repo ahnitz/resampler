@@ -5,9 +5,10 @@ import os
 import re
 import subprocess
 import time
+
 import numpy as np
 
-from .gwosc_io import read_file, FS_IN, FILE_DUR
+from .gwosc_io import FILE_DUR, FS_IN, read_file
 
 CHUNK = 4194304  # GPS span of one OSDF directory
 

@@ -6,8 +6,7 @@ re-derives reduced-rate data straight from the 16384 Hz files using a
 filter specified to <1e-8 ripple and better than -150 dB stopband, while
 keeping the GWOSC file layout so existing readers work unchanged.
 """
-from .filters import (EDGE_CLEAN, EDGE_EXTRAP, EDGE_PAD, EDGE_DESCRIPTIONS,
-                      design, reduce_strain)
+from .filters import EDGE_CLEAN, EDGE_DESCRIPTIONS, EDGE_EXTRAP, EDGE_PAD, design, reduce_strain
 from .gwosc_io import read_file, write_reduced
 from .osdf import index, load_span
 

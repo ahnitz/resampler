@@ -7,16 +7,20 @@ Each (run, detector) is an independent sequential stream so that neighbouring
 files -- needed as filter context -- stay in that stream's cache.  Streams run
 in parallel, which is what keeps the network busy.
 """
-import argparse, math, os, re, sys, time, threading
+import argparse
+import math
+import os
+import sys
+import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 
 import h5py
-import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from data_sampler.filters import FS_IN, design, reduce_strain
 from data_sampler.gwosc_io import FILE_DUR, write_reduced
-from data_sampler.osdf import ROOTS, index, chunks, load_span
+from data_sampler.osdf import chunks, index, load_span
 
 PRIORITY = ["O4a", "O4b", "O3a", "O3b", "O2", "O1"]
 DETECTORS = ["H1", "L1", "V1"]
@@ -96,7 +100,6 @@ def run_stream(run, det, args):
                 stats["bytes_out"] += os.path.getsize(dst)
                 n = stats["files"]
             if n % 20 == 0:
-                el = time.time() - t0
                 log(f"{n} written, {stats['bytes_out']/1e9:.1f} GB out, "
                     f"{stats['skipped']} skipped, {stats['failed']} failed")
         except Exception as e:

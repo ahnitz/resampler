@@ -7,8 +7,12 @@ SNR, arrival time and phase survive the reduction.
 The template is generated independently at each sample rate from the same
 analytic waveform, so any disagreement is the reduction's fault.
 """
-import argparse, os, sys
-import h5py, numpy as np
+import argparse
+import os
+import sys
+
+import h5py
+import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from data_sampler.filters import reduce_strain  # noqa: E402

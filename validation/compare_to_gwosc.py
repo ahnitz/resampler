@@ -6,8 +6,13 @@ Measure the effective anti-alias filter GWOSC used for its official
 The trick: both products derive from the same 16 kHz realisation, so the
 ratio of their Welch PSDs is a (nearly noise-free) estimate of |H(f)|^2.
 """
-import argparse, os, subprocess, sys
-import h5py, numpy as np
+import argparse
+import os
+import subprocess
+import sys
+
+import h5py
+import numpy as np
 from scipy import signal
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))

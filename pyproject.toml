@@ -7,7 +7,7 @@ name = "data-sampler"
 version = "0.1.0"
 description = "Reduce GWOSC 16 kHz strain to a lower sample rate with a properly specified anti-alias filter"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = ["numpy>=1.20", "scipy>=1.7", "h5py>=3.0"]
 
 [project.scripts]

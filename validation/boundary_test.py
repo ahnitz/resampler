@@ -7,8 +7,12 @@ Two things are measured:
   2. EDGE FIDELITY -- error as a function of distance from a boundary, against
      a reference built from the 16 kHz data with full context.
 """
-import argparse, os, sys
-import h5py, numpy as np
+import argparse
+import os
+import sys
+
+import h5py
+import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from data_sampler.filters import design, reduce_strain, contiguous_runs  # noqa
