@@ -154,6 +154,30 @@ a level saying how it was produced:
 
 Level 1 and 2 each span only ~0.5 s per science edge.
 
+### Why not shorten the kernel near the edge instead?
+
+Tempting, and more principled-sounding: an output sample `d` samples from an
+edge can only draw on `d` real samples, so use the longest filter that *fits*
+and invent nothing. `design_ladder` builds exactly that, and
+`reduce_strain_tapered` applies it.
+
+Measured, it loses. Restricted to 20-900 Hz -- strictly inside every ladder
+passband, so the short filters are not penalised for the band they openly
+drop -- reflection is better at every distance:
+
+| window from edge | reflect | taper |
+|---|---|---|
+| 37-61 ms | **2.7e-06** | 1.6e-05 |
+| 73-116 ms | **2.4e-07** | 2.8e-07 |
+| 134-238 ms | **1.4e-08** | 1.7e-06 |
+
+The reason: reflected content enters only through the extreme tail of the
+kernel, so its effect decays very fast with distance, whereas a shortened
+kernel has a systematically different response that applies at full strength
+wherever it is used. Perturbing the input slightly costs far less than
+changing the filter. The code is kept (`validation/taper_vs_reflect.py`
+reproduces this) but reflection remains the default.
+
 ## float32 and dynamic range
 
 float32 storage is comfortably sufficient and **no dynamic-range factor is

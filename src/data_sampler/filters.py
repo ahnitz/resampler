@@ -54,6 +54,103 @@ def contiguous_runs(ok):
     return list(zip(np.where(d == 1)[0], np.where(d == -1)[0]))
 
 
+def design_ladder(fs_out, fs_in=FS_IN, atten_db=180.0,
+                  passband_frac=1000.0 / 1024.0, min_half=64):
+    """A ladder of progressively shorter filters for use near a segment edge.
+
+    An output sample ``d`` input-samples from a science edge can only draw on
+    ``d`` samples of real data on that side.  Rather than invent the missing
+    input, use the longest filter that *fits* -- so every sample is computed
+    from real data alone, at the cost of a narrower passband close to the
+    edge.
+
+    Returns a list of ``(half_length, taps, passband_hz, stopband_db)``,
+    longest first.  Entry 0 is the full interior filter.
+    """
+    nyq = fs_out / 2.0
+    taps0, pb0 = design(fs_out, fs_in, atten_db, passband_frac)
+    out = [(len(taps0) // 2, taps0, pb0, atten_db)]
+
+    h = 1 << int(np.log2(len(taps0) // 2))
+    while h >= min_half:
+        n = 2 * h + 1
+        for a in (180.0, 140.0, 110.0, 90.0, 70.0):
+            df = (a - 8) / (2.285 * n) * fs_in / (2 * np.pi)
+            pb = nyq - df / 2
+            if pb > 0.5 * nyq:
+                t = signal.firwin(n, nyq, width=df, fs=fs_in,
+                                  window=("kaiser", signal.kaiser_beta(a)))
+                out.append((h, t, pb, a))
+                break
+        h //= 2
+    return out
+
+
+def _apply_ladder(seg, ladder, fs_in, M):
+    """Filter one contiguous segment, shortening the kernel near both ends.
+
+    Returns ``(y_full_rate, level)`` where ``level`` indexes ``ladder`` for
+    every input sample (0 = full interior filter).
+    """
+    n = len(seg)
+    y = filter_block(seg, ladder[0][1])          # interior, reflected ends
+    level = np.zeros(n, np.uint8)
+
+    # Walk outwards from each end, replacing the reflected region with the
+    # longest filter that sees only real data.
+    for idx in range(1, len(ladder)):
+        h, taps, _, _ = ladder[idx]
+        hi = ladder[idx - 1][0]                  # previous (longer) half-length
+        for lo_edge in (True, False):
+            if lo_edge:
+                a, b = h, min(hi, n)             # distances [h, hi) from start
+            else:
+                a, b = max(n - hi, 0), n - h
+            if b <= a:
+                continue
+            lo, up = max(a - h, 0), min(b + h, n)
+            loc = signal.oaconvolve(seg[lo:up], taps, mode="same")
+            y[a:b] = loc[a - lo:b - lo]
+            level[a:b] = idx
+
+    # innermost sliver: fewer real samples than the shortest kernel needs
+    hmin = ladder[-1][0]
+    if n > 2 * hmin:
+        level[:hmin] = 255
+        level[n - hmin:] = 255
+    else:
+        level[:] = 255
+    return y, level
+
+
+def reduce_strain_tapered(x, fs_out, fs_in=FS_IN, extend_s=0.0, ladder=None,
+                          **kw):
+    """Reduce ``x`` using a shortened kernel near every science edge.
+
+    Unlike the reflecting path, no output sample inside real data is computed
+    from invented input.  Returns ``(y, level, ladder)`` where ``level`` is
+    the ladder index per output sample (0 = full filter, 255 = sliver too
+    short for the shortest kernel).
+    """
+    M = fs_in // fs_out
+    if ladder is None:
+        ladder = design_ladder(fs_out, fs_in, **kw)
+    n_out = len(x) // M
+    y = np.full(n_out, np.nan)
+    level = np.full(n_out, 255, np.uint8)
+
+    for a, b in contiguous_runs(np.isfinite(x)):
+        if b - a < 2 * M:
+            continue
+        yy, lv = _apply_ladder(x[a:b].astype(np.float64), ladder, fs_in, M)
+        o_lo, o_hi = a // M, b // M
+        off = o_lo * M - a
+        take = slice(off, off + (o_hi - o_lo) * M, M)
+        y[o_lo:o_hi] = yy[take]
+        level[o_lo:o_hi] = lv[take]
+    return y, level, ladder
+
+
 def reduce_strain(x, fs_out, fs_in=FS_IN, extend_s=0.25, taps=None, **kw):
     """Reduce 16 kHz ``x`` (NaN outside science data) to ``fs_out``.
 

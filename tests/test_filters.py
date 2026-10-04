@@ -142,3 +142,17 @@ def test_edge_accuracy_against_known_truth():
     # and no science time is thrown away
     covered = np.isfinite(x).reshape(-1, 8).any(axis=1)
     assert fin[covered].all()
+
+
+def test_tapered_path_runs_and_uses_real_data_only():
+    """The ladder path should emit the same span and never need padding."""
+    from data_sampler.filters import design_ladder, reduce_strain_tapered
+    ladder = design_ladder(2048)
+    assert ladder[0][0] > ladder[-1][0]                 # longest first
+    assert all(len(t) == 2 * h + 1 for h, t, _, _ in ladder)
+    x = 1e-18 * np.sin(2 * np.pi * 137.0 * np.arange(120 * FS_IN) / FS_IN)
+    x[:20 * FS_IN] = np.nan
+    y, level, _ = reduce_strain_tapered(x, 2048)
+    covered = np.isfinite(x).reshape(-1, 8).any(axis=1)
+    assert np.isfinite(y)[covered].all()
+    assert (level[covered] == 0).any() and (level[covered] > 0).any()
