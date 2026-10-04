@@ -134,9 +134,15 @@ nothing — floating point stores a mantissa, not an absolute step.
 
 A scale factor matters only for *downstream arithmetic*: strain² ≈ 2.3e-36 is
 only ~200× above the float32 minimum normal (1.18e-38), so code that squares
-strain in float32 will underflow. `provenance/DynRangeFac` records the applied
-factor (1.0 — data is stored unscaled, GWOSC-compatible); apply something like
-2**69 in your own pipeline if you compute in float32.
+strain in float32 will underflow. That is a property of strain's physical
+scale, not of this format — the 16 kHz float64 originals underflow the moment
+you cast them.
+
+Analysis codes already apply their own `DYN_RANGE_FAC`, so these files are
+stored **unscaled** and `provenance/DynRangeFac` is `1.0`. Keep it that way:
+pre-scaling the files would double-apply the factor and would break
+byte-compatibility with GWOSC readers. The attribute exists so a reader can
+confirm nothing was applied.
 
 ## Storage
 
