@@ -27,11 +27,14 @@ KINDS = ["zero", "const", "even", "odd"]
 def pad_filter(seg, kind, taps):
     k = len(taps) // 2
     if kind == "zero":
-        left = np.zeros(k); right = np.zeros(k)
+        left = np.zeros(k)
+        right = np.zeros(k)
     elif kind == "const":
-        left = np.full(k, seg[0]); right = np.full(k, seg[-1])
+        left = np.full(k, seg[0])
+        right = np.full(k, seg[-1])
     elif kind == "even":
-        left = seg[1:k + 1][::-1]; right = seg[-k - 1:-1][::-1]
+        left = seg[1:k + 1][::-1]
+        right = seg[-k - 1:-1][::-1]
     else:
         left = 2 * seg[0] - seg[1:k + 1][::-1]
         right = 2 * seg[-1] - seg[-k - 1:-1][::-1]
