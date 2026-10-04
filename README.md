@@ -150,6 +150,19 @@ confirm nothing was applied.
 **16× smaller**. The complete 16 kHz catalogue (O1–O4b, 20.6 TB) reduces to
 roughly **1.3 TB**.
 
+## Compression
+
+Strain is stored gzip level 4 with the shuffle filter, matching GWOSC.
+`validation/compression_bench.py` shows this is at the practical optimum:
+shuffle is the entire win (-16%), the gzip level is irrelevant (level 9 saves
+0.1% for twice the write cost), and zstd/blosc gain nothing while requiring
+`hdf5plugin` just to read the files.
+
+Real savings exist only by going lossy -- truncating the float32 mantissa to
+16 bits saves 24% with added noise still 104 dB below the data. That is
+deliberately not done: space is not the binding constraint, and compression
+has no effect on the download time that actually dominates.
+
 ## Tests
 
 ```bash
