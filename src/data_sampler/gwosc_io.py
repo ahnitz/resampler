@@ -120,6 +120,7 @@ def write_reduced(path, *, y, edge, gps_start, fs_out, duration, template,
             "FilterNtaps": len(taps), "FilterPassbandHz": float(passband_hz),
             "FilterType": "Kaiser-window linear-phase FIR, zero phase",
             "EdgePadding": "odd reflection",
+            "ConvolutionMethod": "scipy.signal.oaconvolve",
             "DynRangeFac": 1.0,
             "Producer": "data_sampler",
         })
