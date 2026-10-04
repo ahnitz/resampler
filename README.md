@@ -40,6 +40,31 @@ and matched-filters the result through three pipelines: the 16 kHz data
 | 1400–1843 Hz | −0.18 % | **−28.2 %** |
 | 1600–1843 Hz | **−0.00 %** | **−25.9 %** |
 
+### What GWOSC actually does
+
+They document it, and it checks out exactly. Their page says the downsampling
+uses `scipy.signal.decimate`, and scipy's default IIR path is
+`cheby1(8, 0.05 dB, Wn=0.8/q)` -- an order-8 Chebyshev type I with the cutoff
+at just **80% of the output Nyquist** (1638 Hz) and **0.05 dB passband
+ripple**, which is +/-0.577%. That predicts -2.11 dB at 1700 Hz, -14.62 dB at
+1800 Hz and -44.07 dB at 2000 Hz; measured on real data the figures are
+-2.11, -14.62 and -43.89 dB. `validation/identify_gwosc_filter.py` reproduces
+their published file from the 16 kHz source to 2e-12.
+
+So this is not a hidden defect -- it is scipy's default, and GWOSC says
+plainly that "for studies involving frequencies of around 1700 Hz or above,
+the 16384 Hz data should be used instead". This package is a way to take that
+advice without carrying 16 kHz volumes.
+
+| | GWOSC | data_sampler |
+|---|---|---|
+| filter | order-8 Chebyshev I (IIR) | Kaiser-window FIR, ~8183 taps |
+| passband ripple | 0.05 dB (+/-0.577%) | <2e-9 |
+| cutoff | 80% of output Nyquist | 97.7% |
+| stopband at Nyquist | -44 dB | -179 dB |
+| phase | zero-phase (filtfilt) | zero-phase (symmetric FIR) |
+| at segment edges | 8 s real padding "not always available" | real neighbour-file context; odd reflection only at true edges, flagged per sample |
+
 Two honest qualifications:
 
 * **Below ~1 kHz their product is fine for matched filtering.** Matched-filter
