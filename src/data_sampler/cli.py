@@ -26,7 +26,10 @@ def build_parser():
     p.add_argument("--duration", type=int,
                    help="length in seconds; alternative to --end")
     p.add_argument("--rate", type=int, default=2048,
-                   help="output sample rate, must divide 16384 (default 2048)")
+                   help="output sample rate, must divide 16384 (default 2048). "
+                        "4096 costs no extra download and keeps the "
+                        "1600-2000 Hz band; lower rates cascade from it "
+                        "losslessly.")
     p.add_argument("--out", "-o", help="output file (default: auto-named)")
     p.add_argument("--cache", default=os.environ.get(
         "DATA_SAMPLER_CACHE", os.path.expanduser("~/.cache/data_sampler")),

@@ -123,7 +123,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dest", required=True, help="output root")
     ap.add_argument("--cache", default="/tmp/ds_bulk", help="16 kHz scratch (fast disk)")
-    ap.add_argument("--rate", type=int, default=2048)
+    ap.add_argument("--rate", type=int, default=2048,
+                    help="output sample rate; must divide 16384 (default 2048). "
+                         "See 'Choosing the output rate' in the README: 4096 "
+                         "costs no extra download and keeps the 1600-2000 Hz "
+                         "band, if the destination has room.")
     ap.add_argument("--atten-db", type=float, default=180.0)
     ap.add_argument("--runs", default=",".join(PRIORITY))
     ap.add_argument("--workers", type=int, default=6)

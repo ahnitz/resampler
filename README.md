@@ -217,6 +217,47 @@ Real savings exist only by going lossy -- truncating the float32 mantissa to
 deliberately not done: space is not the binding constraint, and compression
 has no effect on the download time that actually dominates.
 
+## Choosing the output rate
+
+**Default is 2048 Hz**, which is the right choice when the destination is
+storage-limited. If it is not, 4096 Hz is the better archive and costs no
+extra download -- read on.
+
+The download is 20.6 TB and ~5 days *regardless of output rate* -- it is the
+same 16 kHz source either way. The rate only changes what you store, and
+storage is the cheap axis:
+
+| output | stored | downloaded |
+|---|---|---|
+| 2048 Hz | 1.17 TB | 20.6 TB / ~5 days |
+| **4096 Hz** | **2.33 TB** | 20.6 TB / ~5 days |
+| 8192 Hz | 4.67 TB | 20.6 TB / ~5 days |
+
+A 2048 Hz product has its Nyquist at 1024 Hz, so it cannot contain the
+1600-2000 Hz band -- which is exactly where GWOSC's own product loses 25.9%
+of SNR, and therefore the only reason to re-derive from 16 kHz at all.
+Archiving at 2048 Hz spends five days of bandwidth to buy roughly **0.12%**
+over simply decimating GWOSC's existing 4 kHz files, which would have cost a
+day and a half.
+
+Nothing is lost by archiving higher: cascading 16384 -> 4096 -> 2048 matches a
+direct 16384 -> 2048 to **4.2e-8**, so a 2048 Hz set can be generated from the
+archive later in a few hours with no re-download. That cascade is only safe
+because the 4096 Hz product here is flat to 2000 Hz at -179 dB -- it is
+exactly what you cannot do from GWOSC's 4 kHz files.
+
+At 4096 Hz the kernel is also half as long as at 2048 Hz (4093 vs 8183 taps),
+so the edge-affected region halves too, to 125 ms.
+
+If storage is tight but not desperate, a reasonable split is 4096 Hz for O4 --
+the most sensitive data, where high-frequency content is worth most -- and
+2048 Hz for the rest, via two runs with `--runs`:
+
+```bash
+python scripts/bulk_reduce.py --dest DEST --rate 4096 --runs O4a,O4b   # 0.96 TB
+python scripts/bulk_reduce.py --dest DEST --rate 2048 --runs O3a,O3b,O2,O1  # 0.69 TB
+```
+
 ## Bulk production
 
 `scripts/bulk_reduce.py` reduces whole observing runs, downloading each 16 kHz
@@ -240,9 +281,29 @@ It is **resumable**: valid outputs are skipped, so an interrupted run can be
 restarted with the same command, and a partially-populated destination can be
 handed to a different machine and continued there.
 
-Expect roughly 20.6 TB downloaded and ~1.1-1.3 TB written for the full set.
+Expect roughly 20.6 TB downloaded and ~1.2 TB written for the full set at the
+default 2048 Hz (~2.3 TB at 4096 Hz).
 The job is network-bound -- about 5 days on a 45 MB/s link -- so the only
 thing that meaningfully speeds it up is a faster connection.
+
+## Current state
+
+No production output has been kept. The 204 files produced during
+development are 2048 Hz and used the current method, but a fresh run from an
+empty destination is cleaner; the job is resumable either way.
+
+Settled by measurement, and not worth revisiting without new evidence:
+
+| decision | why |
+|---|---|
+| source = 16 kHz, not the official 4 kHz | their filter costs 25.9% of SNR above 1600 Hz |
+| output rate | 2048 Hz default for storage-limited destinations; 4096 Hz is better where there is room, at no extra download |
+| passband 1000/1024 of Nyquist | 2000 Hz flat; ripple 1.8e-9, stopband -173 dB |
+| Kaiser FIR, not IIR | flat passband and arbitrary rejection |
+| odd reflection at edges | beats zero-padding ~40x and beats kernel tapering up to 100x |
+| emit past edges, flag per sample | no science time lost; 0.008% of samples flagged |
+| float32, unscaled | quantisation 76 dB below the data; analysis codes apply their own DYN_RANGE_FAC |
+| gzip 4 + shuffle | shuffle is the whole win; level and codec changes gain <1% |
 
 ## Tests
 
